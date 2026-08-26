@@ -1,0 +1,10 @@
+.vs/
+packages/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+TestResults/
+*.nupkg
