@@ -16,7 +16,7 @@ namespace PWFAuthCSharp
             {
                 BackColor = System.Drawing.Color.FromArgb(23, 33, 51),
                 Name = "pnlLoginCard",
-                Size = new System.Drawing.Size(500, 465)
+                Size = new System.Drawing.Size(500, 505)
             };
 
             var accent = new System.Windows.Forms.Panel
@@ -68,14 +68,26 @@ namespace PWFAuthCSharp
             this.lblLoginStatus = MakeLabel(string.Empty, 42, 358, 416, 44, 9F,
                 System.Drawing.Color.FromArgb(248, 113, 113), false,
                 System.Drawing.ContentAlignment.TopCenter);
-            var securityNote = MakeLabel("Encrypted connection  •  Key bound to this device", 42, 412, 416, 22, 9F,
+
+            // Shown only when the key is bound to another computer.
+            this.btnMoveLicense = MakeButton("Move this license to this PC", 42, 408, 416, 38,
+                System.Drawing.Color.FromArgb(23, 33, 51), System.Drawing.Color.FromArgb(96, 165, 250));
+            this.btnMoveLicense.Name = "btnMoveLicense";
+            this.btnMoveLicense.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnMoveLicense.FlatAppearance.BorderSize = 1;
+            this.btnMoveLicense.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(59, 130, 246);
+            this.btnMoveLicense.Visible = false;
+            this.btnMoveLicense.Click += new System.EventHandler(this.btnMoveLicense_Click);
+            this.txtLicenseKey.TextChanged += delegate { this.btnMoveLicense.Visible = false; };
+
+            var securityNote = MakeLabel("Encrypted connection  •  Key bound to this device", 42, 458, 416, 22, 9F,
                 System.Drawing.Color.FromArgb(139, 151, 173), false,
                 System.Drawing.ContentAlignment.MiddleCenter);
 
             this.pnlLoginCard.Controls.AddRange(new System.Windows.Forms.Control[]
             {
                 accent, logo, welcome, hint, keyCaption, this.txtLicenseKey,
-                this.btnLogin, this.loginProgress, this.lblLoginStatus, securityNote
+                this.btnLogin, this.loginProgress, this.lblLoginStatus, this.btnMoveLicense, securityNote
             });
             this.pnlLoginPage.Controls.Add(this.pnlLoginCard);
         }

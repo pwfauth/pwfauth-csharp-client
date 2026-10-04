@@ -3,8 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Drawing;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace PWFAuthCSharp
@@ -31,6 +33,9 @@ namespace PWFAuthCSharp
                 { "user.expires_at", "Expiration date" },
                 { "user.days_remaining", "Days remaining" },
                 { "user.status", "Key status" },
+                { "seller.type", "Sold by (type)" },
+                { "seller.name", "Sold by" },
+                { "seller.contact", "Seller contact" },
                 { "app.name", "Application name" },
                 { "app.version", "Application version" },
                 { "app.message", "Application message" },
@@ -68,6 +73,13 @@ namespace PWFAuthCSharp
                 return;
             }
 
+            await SignInAsync(licenseKey, false);
+        }
+
+        // Shared by Sign In and "Move this license to this PC". moveFirst = the user
+        // agreed to unbind the key from the computer it is bound to, then sign in here.
+        private async Task SignInAsync(string licenseKey, bool moveFirst)
+        {
             string appSecret = GetAppSecret();
             if (string.IsNullOrWhiteSpace(appSecret))
             {
@@ -76,38 +88,60 @@ namespace PWFAuthCSharp
             }
 
             SetLoginBusy(true);
-            SetLoginMessage("Verifying the key and connecting to the server...", false);
+            SetMoveLicenseVisible(false);
+            SetLoginMessage(moveFirst
+                ? "Moving the license to this computer..."
+                : "Verifying the key and connecting to the server...", false);
 
             PwfClient pendingClient = null;
             bool loginCompleted = false;
             try
             {
-                pendingClient = new PwfClient(appSecret);
+                pendingClient = new PwfClient(new PwfClientOptions { AppSecret = appSecret, BaseUrl = GetBaseUrl() });
                 pendingClient.SessionEnded += Client_SessionEnded;
+
+                if (moveFirst)
+                {
+                    // Self-service move: unbinds the key from every computer it is bound
+                    // to, so the login below binds it here. The developer's cooldown
+                    // (12 hours by default) applies between two moves.
+                    PwfResponse moved = await pendingClient.ResetHardwareIdAsync(licenseKey, "Moved with the C# desktop client");
+                    if (!moved.Success)
+                    {
+                        SetLoginMessage(Describe(moved, "The license could not be moved."), true);
+                        return;
+                    }
+                }
 
                 PwfResponse login = await pendingClient.LoginAsync(licenseKey);
                 if (!login.Success)
                 {
-                    string code = string.IsNullOrWhiteSpace(login.ErrorCode)
-                        ? string.Empty
-                        : " (" + login.ErrorCode + ")";
-                    SetLoginMessage((login.Message ?? "Sign-in failed.") + code, true);
-                    pendingClient.SessionEnded -= Client_SessionEnded;
-                    pendingClient.Dispose();
-                    pendingClient = null;
+                    SetLoginMessage(Describe(login, "Sign-in failed."), true);
+                    // Bound to another computer: offer the self-service move.
+                    if (login.ErrorCode == PwfErrorCodes.HwidMismatch || login.ErrorCode == PwfErrorCodes.DeviceLimit)
+                    {
+                        SetLoginMessage("This key is bound to another computer (" + login.ErrorCode + ").\r\n" +
+                            "You can move it here — it then stops working on the other one.", true);
+                        SetMoveLicenseVisible(true);
+                    }
                     return;
                 }
 
                 _client = pendingClient;
                 pendingClient = null;
                 PopulateDashboard(login);
+                // Started on the UI thread, so SessionEnded is raised on the UI thread too.
                 _client.StartHeartbeat();
                 ShowDashboard();
                 loginCompleted = true;
             }
+            catch (PwfHttpException ex) when (ex.StatusCode == 401)
+            {
+                SetLoginMessage("The license server refused the application secret (HTTP 401). Check PWFAuthAppSecret in App.config.", true);
+            }
             catch (PwfCryptoException ex)
             {
-                SetLoginMessage("The encrypted response could not be verified. Check the application secret and the device clock.\r\n" + ex.Message, true);
+                SetLoginMessage("The encrypted response could not be verified. Check the application secret.\r\n" + ex.Message, true);
             }
             catch (PwfHttpException ex)
             {
@@ -116,6 +150,11 @@ namespace PWFAuthCSharp
             catch (PwfException ex)
             {
                 SetLoginMessage(ex.Message, true);
+            }
+            catch (HttpRequestException)
+            {
+                // No connection at all: offline, DNS, firewall, proxy or TLS.
+                SetLoginMessage("Cannot reach the license server. Check your internet connection and try again.", true);
             }
             catch (Exception ex)
             {
@@ -134,6 +173,27 @@ namespace PWFAuthCSharp
 
                 SetLoginBusy(false);
             }
+        }
+
+        private async void btnMoveLicense_Click(object sender, EventArgs e)
+        {
+            if (_isLoggingIn)
+                return;
+
+            string licenseKey = txtLicenseKey.Text.Trim();
+            if (licenseKey.Length == 0)
+                return;
+
+            await SignInAsync(licenseKey, true);
+        }
+
+        // The server's message (safe to show the user) plus its error code.
+        private static string Describe(PwfResponse response, string fallback)
+        {
+            string code = string.IsNullOrWhiteSpace(response.ErrorCode)
+                ? string.Empty
+                : " (" + response.ErrorCode + ")";
+            return (response.Message ?? fallback) + code;
         }
 
         private async void btnLogout_Click(object sender, EventArgs e)
@@ -160,6 +220,10 @@ namespace PWFAuthCSharp
             }
         }
 
+        // The heartbeat ended the session: the key was banned, paused, expired, reset or
+        // revoked, maintenance started, or the server could not be reached for several
+        // beats in a row. PWFAuth raises this on the UI thread (StartHeartbeat was called
+        // there); the InvokeRequired check is only a safety net.
         private void Client_SessionEnded(object sender, SessionEndedEventArgs e)
         {
             if (IsDisposed || Disposing)
@@ -186,9 +250,13 @@ namespace PWFAuthCSharp
             bool hasUser = login.TryGetProperty("user", out user) && user.ValueKind == JsonValueKind.Object;
             bool hasApp = login.TryGetProperty("app", out app) && app.ValueKind == JsonValueKind.Object;
 
+            JsonElement seller;
+            bool hasSeller = login.TryGetProperty("seller", out seller) && seller.ValueKind == JsonValueKind.Object;
+
             string appName = hasApp ? ReadString(app, "name") : null;
             string appVersion = hasApp ? ReadString(app, "version") : null;
             string appMessage = hasApp ? ReadString(app, "message") : null;
+            string sellerName = hasSeller ? ReadString(seller, "name") : null;
             string licenseKey = hasUser ? ReadString(user, "license_key") : _client.LicenseKey;
             string status = hasUser ? ReadString(user, "status") : null;
             string keyType = hasUser ? ReadString(user, "key_type") : null;
@@ -199,7 +267,7 @@ namespace PWFAuthCSharp
             lblDashboardTitle.Text = string.IsNullOrWhiteSpace(appName)
                 ? "License Information"
                 : appName + " — License Information";
-            lblDashboardSubtitle.Text = BuildSubtitle(licenseKey, appVersion, appMessage);
+            lblDashboardSubtitle.Text = BuildSubtitle(licenseKey, appVersion, sellerName, appMessage);
             lblStatusValue.Text = TranslateStatus(status);
             lblTypeValue.Text = TranslateKeyType(keyType, duration);
             lblExpiryValue.Text = FormatDateOrLifetime(expiresAt);
@@ -315,13 +383,15 @@ namespace PWFAuthCSharp
             return value.GetRawText();
         }
 
-        private static string BuildSubtitle(string licenseKey, string appVersion, string appMessage)
+        private static string BuildSubtitle(string licenseKey, string appVersion, string sellerName, string appMessage)
         {
             var parts = new List<string>();
             if (!string.IsNullOrWhiteSpace(licenseKey))
                 parts.Add(licenseKey);
             if (!string.IsNullOrWhiteSpace(appVersion))
                 parts.Add("Version " + appVersion);
+            if (!string.IsNullOrWhiteSpace(sellerName))
+                parts.Add("Sold by " + sellerName);
             if (!string.IsNullOrWhiteSpace(appMessage))
                 parts.Add(appMessage);
             return string.Join("  •  ", parts);
@@ -448,7 +518,26 @@ namespace PWFAuthCSharp
                 return fromEnvironment.Trim();
 
             string fromConfig = ConfigurationManager.AppSettings["PWFAuthAppSecret"];
-            return string.IsNullOrWhiteSpace(fromConfig) ? null : fromConfig.Trim();
+            // The placeholder shipped in App.config counts as "not configured".
+            if (string.IsNullOrWhiteSpace(fromConfig) || fromConfig.Trim() == "YOUR_64_CHARACTER_APP_SECRET")
+                return null;
+            return fromConfig.Trim();
+        }
+
+        // Optional: another server, e.g. a staging copy. Empty = https://pwfauth.com.
+        private static string GetBaseUrl()
+        {
+            string fromEnvironment = Environment.GetEnvironmentVariable("PWFAUTH_BASE_URL");
+            if (!string.IsNullOrWhiteSpace(fromEnvironment))
+                return fromEnvironment.Trim();
+
+            string fromConfig = ConfigurationManager.AppSettings["PWFAuthBaseUrl"];
+            return string.IsNullOrWhiteSpace(fromConfig) ? "https://pwfauth.com" : fromConfig.Trim();
+        }
+
+        private void SetMoveLicenseVisible(bool visible)
+        {
+            btnMoveLicense.Visible = visible;
         }
 
         private void ShowDashboard()

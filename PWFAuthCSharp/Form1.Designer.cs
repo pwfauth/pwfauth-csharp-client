@@ -10,6 +10,7 @@ namespace PWFAuthCSharp
         private System.Windows.Forms.Button btnLogin;
         private System.Windows.Forms.ProgressBar loginProgress;
         private System.Windows.Forms.Label lblLoginStatus;
+        private System.Windows.Forms.Button btnMoveLicense;
 
         private System.Windows.Forms.Panel pnlDashboard;
         private System.Windows.Forms.Label lblDashboardTitle;
