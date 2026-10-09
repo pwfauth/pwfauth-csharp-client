@@ -43,4 +43,4 @@ patching an executable/source they control; enforce valuable operations server-s
 ## Package availability for this sample
 
 NuGet.Config uses the verified official NuGet package mirrored in vendor/.
-The sample can be installed while publication to package registries is pending.
+PWFAuth 1.4.0 is also available on nuget.org; the verified local package source remains supported.
