@@ -1,7 +1,9 @@
 # PWF Auth C# Desktop Client
 
+This revision requires the new signed-response SDK (PWFAuth 1.4.0 / Python pwfauth 1.2.0 as applicable). The included NuGet.Config restores the verified official SDK from vendor/; nuget.org publication is pending. It rejects unsigned or forged replies and fixes the production endpoint.
+
 An English Windows Forms sample for the official
-[`PWFAuth` NuGet package](https://www.nuget.org/packages/PWFAuth) (version 1.3.0)
+[`PWFAuth` NuGet package](https://www.nuget.org/packages/PWFAuth) (version 1.4.0)
 on .NET Framework 4.8.1. The application:
 
 - signs in with a license key;
@@ -54,12 +56,7 @@ Set the 64-character application secret in
 <add key="PWFAuthAppSecret" value="YOUR_64_CHARACTER_APP_SECRET" />
 ```
 
-Alternatively, set the `PWFAUTH_APP_SECRET` environment variable. Never commit a
-real application secret or license key to the repository.
-
-Optional: to point the app at another server, such as a staging copy, set
-`PWFAuthBaseUrl` in `App.config` or the `PWFAUTH_BASE_URL` environment
-variable. When both are empty, the app uses `https://pwfauth.com`.
+Configure the secret before distribution and never commit it. The endpoint is fixed to `https://pwfauth.com`; environment overrides are ignored.
 
 ## Build and run
 
@@ -68,4 +65,4 @@ variable. When both are empty, the app uses `https://pwfauth.com`.
 3. Select `Debug | Any CPU` and press `F5`.
 
 Upgrading from an older copy of this sample? Restore the NuGet packages once, so
-`PWFAuth` 1.3.0 replaces 1.0.1 in the `packages` folder.
+`PWFAuth` 1.4.0 replaces 1.0.1 in the `packages` folder.

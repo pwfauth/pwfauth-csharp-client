@@ -513,10 +513,6 @@ namespace PWFAuthCSharp
 
         private static string GetAppSecret()
         {
-            string fromEnvironment = Environment.GetEnvironmentVariable("PWFAUTH_APP_SECRET");
-            if (!string.IsNullOrWhiteSpace(fromEnvironment))
-                return fromEnvironment.Trim();
-
             string fromConfig = ConfigurationManager.AppSettings["PWFAuthAppSecret"];
             // The placeholder shipped in App.config counts as "not configured".
             if (string.IsNullOrWhiteSpace(fromConfig) || fromConfig.Trim() == "YOUR_64_CHARACTER_APP_SECRET")
@@ -524,15 +520,10 @@ namespace PWFAuthCSharp
             return fromConfig.Trim();
         }
 
-        // Optional: another server, e.g. a staging copy. Empty = https://pwfauth.com.
+        // Fixed production endpoint.
         private static string GetBaseUrl()
         {
-            string fromEnvironment = Environment.GetEnvironmentVariable("PWFAUTH_BASE_URL");
-            if (!string.IsNullOrWhiteSpace(fromEnvironment))
-                return fromEnvironment.Trim();
-
-            string fromConfig = ConfigurationManager.AppSettings["PWFAuthBaseUrl"];
-            return string.IsNullOrWhiteSpace(fromConfig) ? "https://pwfauth.com" : fromConfig.Trim();
+            return "https://pwfauth.com";
         }
 
         private void SetMoveLicenseVisible(bool visible)
