@@ -1,15 +1,16 @@
 # PWF Auth C# Desktop Client
 
-This revision requires the new signed-response SDK (PWFAuth 1.4.0 / Python pwfauth 1.2.0 as applicable). The included NuGet.Config restores the verified official SDK from vendor/; the same SDK version is also available on nuget.org. It rejects unsigned or forged replies and fixes the production endpoint.
+This revision uses **PWFAuth 1.7.0**. The included NuGet.Config restores the verified official SDK from vendor/; the same package is on nuget.org. PWFAuth 1.4.0 and older cannot talk to the current server (it signs its replies with a new key), so update older copies.
 
 An English Windows Forms sample for the official
-[`PWFAuth` NuGet package](https://www.nuget.org/packages/PWFAuth) (version 1.4.0)
+[`PWFAuth` NuGet package](https://www.nuget.org/packages/PWFAuth) (version 1.7.0)
 on .NET Framework 4.8.1. The application:
 
 - signs in with a license key;
 - keeps the session alive with the background heartbeat;
 - signs out when the server ends the session;
-- shows the complete login response in a dashboard.
+- shows the complete login response in a dashboard;
+- keeps a value on the server for the key (a user variable).
 
 ![The dashboard after signing in](docs/dashboard.png)
 
@@ -31,6 +32,13 @@ on .NET Framework 4.8.1. The application:
 
   ![Move this license to this PC](docs/move-license.png)
 
+- **User variables.** After sign-in the app reads `sample_opens`, adds one and
+  saves it with `GetVariableAsync` / `SetVariableAsync`, shows "Opened N times
+  with this key" under the title, and lists every variable of the key
+  (`GetVariablesAsync`) in the details table. Open the key in your panel
+  (**Licences → the key → Variables**): the count is there, and a value you
+  change there is what the app reads next time. Variables follow the key to a
+  new PC.
 - **Clear errors.** The app shows a plain message when:
   - there is no internet connection;
   - the server refuses the application secret (HTTP 401);
@@ -65,4 +73,4 @@ Configure the secret before distribution and never commit it. The endpoint is fi
 3. Select `Debug | Any CPU` and press `F5`.
 
 Upgrading from an older copy of this sample? Restore the NuGet packages once, so
-`PWFAuth` 1.4.0 replaces 1.0.1 in the `packages` folder.
+`PWFAuth` 1.7.0 replaces the older version in the `packages` folder.

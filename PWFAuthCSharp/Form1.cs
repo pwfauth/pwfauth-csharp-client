@@ -2,6 +2,7 @@ using PWFAuth;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Globalization;
 using System.Drawing;
 using System.Net.Http;
 using System.Text.Json;
@@ -41,7 +42,8 @@ namespace PWFAuthCSharp
                 { "app.message", "Application message" },
                 { "texts", "Remote texts" },
                 { "features", "Key features" },
-                { "slides", "Announcement slides" }
+                { "slides", "Announcement slides" },
+                { "vars", "User variables" }
             };
 
         private PwfClient _client;
@@ -134,6 +136,8 @@ namespace PWFAuthCSharp
                 _client.StartHeartbeat();
                 ShowDashboard();
                 loginCompleted = true;
+                // Not awaited: the dashboard is already up; the variables fill in a moment later.
+                Task variables = ShowUserVariablesAsync(_client);
             }
             catch (PwfHttpException ex) when (ex.StatusCode == 401)
             {
@@ -185,6 +189,39 @@ namespace PWFAuthCSharp
                 return;
 
             await SignInAsync(licenseKey, true);
+        }
+
+        // User variables (PWFAuth 1.7.0): small values kept on the server for this key, such as
+        // settings, progress or flags. They follow the key to another PC, and the developer sees
+        // and edits them in the panel (Licences -> the key -> Variables). This sample counts how
+        // often the key opened it, then lists every variable of the key in the details table.
+        private async Task ShowUserVariablesAsync(PwfClient client)
+        {
+            try
+            {
+                int opens;
+                if (!int.TryParse(await client.GetVariableAsync("sample_opens"), NumberStyles.Integer, CultureInfo.InvariantCulture, out opens))
+                    opens = 0;   // never set, or text typed into it in the panel
+                opens++;
+                await client.SetVariableAsync("sample_opens", opens.ToString(CultureInfo.InvariantCulture));
+                IReadOnlyDictionary<string, string> all = await client.GetVariablesAsync();
+
+                if (!ReferenceEquals(client, _client))
+                    return;   // signed out meanwhile
+                lblDashboardSubtitle.Text += (lblDashboardSubtitle.Text.Length > 0 ? "  •  " : string.Empty)
+                    + "Opened " + opens + (opens == 1 ? " time" : " times") + " with this key";
+                foreach (KeyValuePair<string, string> variable in all)
+                    AddDetailRow("vars." + variable.Key, variable.Value);
+            }
+            catch (PwfRefusedException ex)
+            {
+                if (ReferenceEquals(client, _client))
+                    AddDetailRow("vars", "Not available: " + ex.Message + " (" + ex.ErrorCode + ")");
+            }
+            catch (Exception)
+            {
+                // Variables are an extra: a network hiccup here must not end the session.
+            }
         }
 
         // The server's message (safe to show the user) plus its error code.
@@ -338,7 +375,11 @@ namespace PWFAuthCSharp
         {
             string normalizedPath = RemoveArrayIndexes(path);
             string displayName;
-            if (!_fieldDisplayNames.TryGetValue(path, out displayName) &&
+            if (normalizedPath.StartsWith("vars.", StringComparison.Ordinal))
+            {
+                displayName = "Variable: " + normalizedPath.Substring(5);
+            }
+            else if (!_fieldDisplayNames.TryGetValue(path, out displayName) &&
                 !_fieldDisplayNames.TryGetValue(normalizedPath, out displayName))
             {
                 int dot = normalizedPath.LastIndexOf('.');

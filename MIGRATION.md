@@ -30,7 +30,7 @@ and application data are not migrated. Existing users do not need replacement ke
 ## Upgrade checklist
 
 1. Preserve a backup/commit of your application's custom changes and dependency lockfile.
-2. Upgrade Python/Node pwfauth to 1.2.0 or NuGet PWFAuth to 1.4.0.
+2. Upgrade NuGet PWFAuth to 1.7.0 (1.4.0 and older cannot talk to the current server).
 3. Remove alternate server URLs; review custom transports and exception handling.
 4. Test a valid license, invalid license, heartbeat/logout, and offline behavior.
 5. Confirm that a security/transport exception never unlocks protected features.
@@ -43,4 +43,4 @@ patching an executable/source they control; enforce valuable operations server-s
 ## Package availability for this sample
 
 NuGet.Config uses the verified official NuGet package mirrored in vendor/.
-PWFAuth 1.4.0 is also available on nuget.org; the verified local package source remains supported.
+PWFAuth 1.7.0 is also available on nuget.org; the verified local package source remains supported.
