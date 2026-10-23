@@ -1,6 +1,9 @@
+<p align="center"><b>English</b> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.ar.md">العربية</a></p>
+<p align="center">Video tutorials: <a href="https://www.youtube.com/@pwfauth">youtube.com/@pwfauth</a></p>
+
 # PWF Auth C# Desktop Client
 
-This revision uses **PWFAuth 1.7.0**. The included NuGet.Config restores the verified official SDK from vendor/; the same package is on nuget.org. PWFAuth 1.4.0 and older cannot talk to the current server (it signs its replies with a new key), so update older copies.
+This revision uses **PWFAuth 1.7.0**. The included NuGet.Config restores the verified official SDK from vendor/; the same package is on nuget.org. PWFAuth 1.4.0 and older cannot talk to the current server (it signs its replies with a new key), so update older copies
 
 An English Windows Forms sample for the official
 [`PWFAuth` NuGet package](https://www.nuget.org/packages/PWFAuth) (version 1.7.0)
@@ -10,25 +13,24 @@ on .NET Framework 4.8.1. The application:
 - keeps the session alive with the background heartbeat;
 - signs out when the server ends the session;
 - shows the complete login response in a dashboard;
-- keeps a value on the server for the key (a user variable).
+- keeps a value on the server for the key (a user variable)
 
 ![The dashboard after signing in](docs/dashboard.png)
 
 ## What it shows
 
-- **Sign in with a license key.** `LoginAsync` binds the key to this computer.
-  The dashboard then shows:
+- **Sign in with a license key.** `LoginAsync` binds the key to this computer. The dashboard then shows:
   - the key's status, type, expiry and time left;
   - who sold the key;
-  - every field of the reply.
+  - every field of the reply
 - **The kill switch.** `StartHeartbeat` runs after sign-in. When you ban, pause or
   reset the key in your dashboard, or it expires, the package raises
   `SessionEnded`, and the app returns to the sign-in page with the reason. The
-  event arrives on the UI thread, so no `Invoke` is needed.
+  event arrives on the UI thread, so no `Invoke` is needed
 - **Move a license to a new PC.** When the key is bound to another computer, the
   sign-in page offers **Move this license to this PC**. This uses
   `ResetHardwareIdAsync`, then signs in again. The developer's cooldown applies
-  between two moves (12 hours by default).
+  between two moves (12 hours by default)
 
   ![Move this license to this PC](docs/move-license.png)
 
@@ -38,16 +40,16 @@ on .NET Framework 4.8.1. The application:
   (`GetVariablesAsync`) in the details table. Open the key in your panel
   (**Licences → the key → Variables**): the count is there, and a value you
   change there is what the app reads next time. Variables follow the key to a
-  new PC.
+  new PC
 - **Clear errors.** The app shows a plain message when:
   - there is no internet connection;
   - the server refuses the application secret (HTTP 401);
-  - the secret in `App.config` is still the placeholder.
+  - the secret in `App.config` is still the placeholder
 - **Clean sign-out.** **Sign Out** and closing the window both end the session on
-  the server right away.
+  the server right away
 
 The package also repairs a wrong PC clock by itself. It refuses a reply that
-claims success without encryption.
+claims success without encryption
 
 ## Requirements
 
@@ -64,13 +66,13 @@ Set the 64-character application secret in
 <add key="PWFAuthAppSecret" value="YOUR_64_CHARACTER_APP_SECRET" />
 ```
 
-Configure the secret before distribution and never commit it. The endpoint is fixed to `https://pwfauth.com`; environment overrides are ignored.
+Configure the secret before distribution and never commit it. The endpoint is fixed to `https://pwfauth.com`; environment overrides are ignored
 
 ## Build and run
 
-1. Open `PWFAuthCSharp.slnx` in Visual Studio.
-2. Restore NuGet packages when prompted.
-3. Select `Debug | Any CPU` and press `F5`.
+1. Open `PWFAuthCSharp.slnx` in Visual Studio
+2. Restore NuGet packages when prompted
+3. Select `Debug | Any CPU` and press `F5`
 
 Upgrading from an older copy of this sample? Restore the NuGet packages once, so
-`PWFAuth` 1.7.0 replaces the older version in the `packages` folder.
+`PWFAuth` 1.7.0 replaces the older version in the `packages` folder
